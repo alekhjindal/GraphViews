@@ -1,0 +1,1 @@
+A 0 B B.attribute = 'category' AND B.value LIKE '%Children%'

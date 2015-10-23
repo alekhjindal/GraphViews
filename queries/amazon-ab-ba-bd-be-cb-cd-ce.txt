@@ -1,0 +1,7 @@
+A 0 B B.attribute = 'category' AND B.value LIKE '%Children%'
+B 0 A B.attribute = 'category' AND B.value LIKE '%Children%'
+B 0 D
+B 0 E
+C 0 B B.attribute = 'category' AND B.value LIKE '%Children%'
+C 0 D
+C 0 E

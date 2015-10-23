@@ -1,0 +1,4 @@
+A 0 B A.attribute = 'category' AND A.value LIKE '%Health, Mind & Body%'
+B 0 A B.attribute = 'category' AND B.value LIKE '%Parenting & Families%'
+C 0 B C.attribute = 'category' AND C.value LIKE '%Children%'
+D 0 B D.attribute = 'category' AND D.value LIKE '%Home & Garden%'

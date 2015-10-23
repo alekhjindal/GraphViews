@@ -1,0 +1,6 @@
+A 0 B B.attribute = 'category' AND B.value LIKE '%Sports%'
+C 0 A
+C 0 B
+D 0 B B.attribute = 'category' AND B.value LIKE '%Sports%'
+D 0 E
+E 0 D

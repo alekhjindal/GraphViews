@@ -1,0 +1,8 @@
+A 0 C
+C 0 B
+C 0 D
+C 0 E
+E 0 C
+E 0 H
+G 0 D
+G 0 H

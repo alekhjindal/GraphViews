@@ -1,0 +1,1 @@
+For queries with filters, we assume that every filter comes in the format of 'X.attribute="some attribute" AND X.value="some value"'.

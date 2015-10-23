@@ -1,0 +1,4 @@
+A 0 C A.attribute = 'category' AND A.value LIKE '%Entertainment%'
+A 0 D D.attribute = 'category' AND D.value LIKE '%Film & Animation%'
+B 0 C C.attribute = 'category' AND C.value LIKE '%Music%'
+B 0 D B.attribute = 'category' AND B.value LIKE '%Sports%'

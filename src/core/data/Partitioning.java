@@ -7,22 +7,30 @@ package core.data;
  * @author alekh
  *
  */
-public class Partitioning {
+public abstract class Partitioning {
 	
+	// partition by source vertex
 	public static class SourceVertexPartitioning extends Partitioning {
-		// partition by source vertex
+		public long getKey(Edge e){
+			return e.getHead().hashCode();
+		}
 	}
 	
+	// partition by destination vertex
 	public static class DestinationVertexPartitioning extends Partitioning {
-		// partition by destination vertex
+		public long getKey(Edge e){
+			return e.getTail().hashCode();
+		}
 	}
 	
 	public static class TwoDPartitioning extends Partitioning {
 		// partition by both source and destination vertices
+		public long getKey(Edge e){
+			return 0;	//TODO
+		}
 	}
 	
 	
-	public long getKey(Edge e){
-		return 0;	// TODO
-	}
+	public abstract long getKey(Edge e);
+	
 }

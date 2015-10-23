@@ -33,11 +33,23 @@ public class ViewQuery extends Query {
 	}
 	
 	public boolean hasEdgesCopartitioned(Partitioning p) {
-		return true;	//TODO
+		long pid = -1;
+		
+		for (Edge e : getGraphQuery().getEdges()){
+			if(pid==-1){
+				pid = p.getKey(e);
+				continue;
+			}
+			
+			if (pid!=p.getKey(e))
+				return false;
+		};
+		
+		return true;
 	}
 	
 	public Edge firstEdge(){
-		return null;	// TODO
+		return getGraphQuery().getEdges().get(0);
 	}
 
 	public void addPlanSolution(Solution solution) {

@@ -13,6 +13,7 @@ import core.query.GraphQuery;
 import core.query.Query;
 import core.query.ViewQuery;
 import core.query.plan.QueryPlanNode;
+import core.query.plan.QueryPlanNodeType;
 
 public class ProcessViews extends ProcessInput{
 
@@ -23,7 +24,7 @@ public class ProcessViews extends ProcessInput{
     	ViewQuery query = getQuery(ht, q); 
     	Vector<Solution> planSolutions = new Vector<Solution>();
     	
-    	if (query.planTripleCount() > 0)
+    	if (query.planSolutionCount() > 0)
     		return;
     	
     	if (query.hasEdgesCopartitioned(p)) {
@@ -62,81 +63,101 @@ public class ProcessViews extends ProcessInput{
     	//System.out.println(q + "\n" + planTriples.size() + "-----------\n");
     }
 	
-	@SuppressWarnings("unused")
 	public static Vector<Solution> computeLinearViewCosts(ViewQuery query, ViewQuery q1, ViewQuery q2, int numberOfMachines) {
-    	Vector<Solution> triples = new Vector<Solution>();
+    	Vector<Solution> solns = new Vector<Solution>();
     	
     	Vector<Solution> solutions1 = q1.getPlanSolutions();
     	Vector<Solution> solutions2 = q2.getPlanSolutions();
     	
-    	Hashtable<String, Double> ht = new Hashtable<String, Double>();
+    	Hashtable<Long, Double> ht = new Hashtable<Long, Double>();
     	
     	for (Solution s1: solutions1) {
     		for (Solution s2: solutions2) {
+    			CostEstimator qEstimator = CostEstimator.combine(s1.getEstimator(), s2.getEstimator());
     			Set<String> commonVertexes = GraphQuery.findCommonVertexes(q1.getGraphQuery(), q2.getGraphQuery());
     			for (String v: commonVertexes) {
     				double costOft1Andt2 = s1.getCost() + s2.getCost();
     				//double costOfJoinInDB = ce.sizeEstimate(query) + ce.sizeEstimate(q1) + ce.sizeEstimate(q2);
     				
     				// Directed Join: q1 to q2
-//    				if (s2.getVertex().equals(v)) {
-//        				compareCost(query, 
-//        						    costOft1Andt2 + ce.sizeEstimate(q1) + ce.sizeEstimate(query),   // WARNING: total size of the query is added and other joins
-//    								ht, 
-//    								v,
-//    								v,
-//    								s1.getPlan(), 
-//    								s2.getPlan(), 
-//    								triples, 
-//    								QueryPlanNodeType.DIRECTED_JOIN_Q1_TO_Q2);				
-//    				}
-//    				// Directed Join: q2 to q1
-//    				else if (s1.getVertex().equals(v)) {
-//        				compareCost(query, costOft1Andt2 + ce.sizeEstimate(q2) + ce.sizeEstimate(query),
-//    								ht, 
-//    								v,
-//    								v,
-//    								s1.getPlan(), 
-//    								s2.getPlan(), 
-//    								triples, 
-//    								QueryPlanNodeType.DIRECTED_JOIN_Q2_TO_Q1);				
-//    				}
-//    				// Only use Parallel Hash Join if Directed Join is not applicable    		
-//    				else {
-//        				compareCost(query, costOft1Andt2 + ce.sizeEstimate(q1) + ce.sizeEstimate(q2) + ce.sizeEstimate(query),
-//        							ht, 
-//        							v,
-//        							v,
-//        							s1.getPlan(), 
-//        							s2.getPlan(), 
-//        							triples, 
-//        							QueryPlanNodeType.HASH_JOIN);
-//    				}
-//    				
-//    				// Broadcast Join: q1 to q2
-//    				compareCost(query, costOft1Andt2 + ce.sizeEstimate(q1) * numberOfMachines + ce.sizeEstimate(query),
-//								ht, 
-//								v, 
-//								s2.getVertex(),
-//								s1.getPlan(), 
-//								s2.getPlan(), 
-//								triples, 
-//								QueryPlanNodeType.BROADCAST_JOIN_Q1_TO_Q2);
-//    				
-//    				// Broadcast Join: q2 to q1
-//    				compareCost(query, costOft1Andt2 + ce.sizeEstimate(q2) * numberOfMachines + ce.sizeEstimate(query),
-//								ht, 
-//								v, 
-//								s1.getVertex(),
-//								s1.getPlan(), 
-//								s2.getPlan(), 
-//								triples, 
-//								QueryPlanNodeType.BROADCAST_JOIN_Q2_TO_Q1);
+    				if (s2.getPartitioningKey()==v.hashCode()) {
+        				compareCost(query, 
+        						    costOft1Andt2 + s1.getEstimator().sizeEstimate(q1) + qEstimator.sizeEstimate(query),   // WARNING: total size of the query is added and other joins
+    								ht, 
+    								v,
+    								v.hashCode(),
+    								s1.getPlan(), 
+    								s2.getPlan(),
+    								qEstimator,
+    								solns, 
+    								QueryPlanNodeType.DIRECTED_JOIN_Q1_TO_Q2);				
+    				}
+    				// Directed Join: q2 to q1
+    				else if (s1.getPartitioningKey()==v.hashCode()) {
+        				compareCost(query, costOft1Andt2 + s2.getEstimator().sizeEstimate(q2) + qEstimator.sizeEstimate(query),
+    								ht, 
+    								v,
+    								v.hashCode(),
+    								s1.getPlan(), 
+    								s2.getPlan(),
+    								qEstimator,
+    								solns, 
+    								QueryPlanNodeType.DIRECTED_JOIN_Q2_TO_Q1);				
+    				}
+    				// Only use Parallel Hash Join if Directed Join is not applicable    		
+    				else {
+        				compareCost(query, costOft1Andt2 + s1.getEstimator().sizeEstimate(q1) + s2.getEstimator().sizeEstimate(q2) + qEstimator.sizeEstimate(query),
+        							ht, 
+        							v,
+        							v.hashCode(),
+        							s1.getPlan(), 
+        							s2.getPlan(), 
+        							qEstimator,        							
+        							solns, 
+        							QueryPlanNodeType.HASH_JOIN);
+    				}
+    				
+    				// Broadcast Join: q1 to q2
+    				compareCost(query, costOft1Andt2 + s1.getEstimator().sizeEstimate(q1) * numberOfMachines + qEstimator.sizeEstimate(query),
+								ht, 
+								v, 
+								s2.getPartitioningKey(),
+								s1.getPlan(), 
+								s2.getPlan(), 
+								qEstimator,
+								solns, 
+								QueryPlanNodeType.BROADCAST_JOIN_Q1_TO_Q2);
+    				
+    				// Broadcast Join: q2 to q1
+    				compareCost(query, costOft1Andt2 + s2.getEstimator().sizeEstimate(q2) * numberOfMachines + qEstimator.sizeEstimate(query),
+								ht, 
+								v, 
+								s1.getPartitioningKey(),
+								s1.getPlan(), 
+								s2.getPlan(), 
+								qEstimator,
+								solns, 
+								QueryPlanNodeType.BROADCAST_JOIN_Q2_TO_Q1);
     			}
     		}
     	}
     	
-    	return triples;
+    	return solns;
+    }
+	
+	public static void compareCost(Query query, double cost, Hashtable<Long, Double> ht, String joinVertex, long partitioningKey, QueryPlanNode n1, QueryPlanNode n2, CostEstimator ce, Vector<Solution> triples, QueryPlanNodeType type) {
+		Double minCostForV = ht.get(partitioningKey);
+		if (minCostForV == null || cost < minCostForV) {
+			QueryPlanNode node = new QueryPlanNode(query, type, joinVertex, n1, n2);
+			Solution solution = new Solution(
+										partitioningKey, 
+										node, 
+										ce, 
+										cost
+									);
+			triples.add(solution); 
+			ht.put(partitioningKey, cost);
+		}    	
     }
 	
 	
@@ -177,5 +198,20 @@ public class ProcessViews extends ProcessInput{
     		ht.put(query, result);
     	}    	
     	return result;    	
+    }
+	
+	public static Solution findMinCostSolution(String inputQuery, Hashtable<String, Query> ht) {
+	    ViewQuery query = (ViewQuery)ht.get(inputQuery);
+	    double minCost = -1;
+        Solution minCostSolution = null;
+
+  	    for (Solution s : query.getPlanSolutions()) {
+  	    	if (minCost < 0 || minCost > s.getCost()) {
+  	    		minCost = s.getCost();
+  	    		minCostSolution = s;
+  	    	}
+  	    }
+  	    
+  	    return minCostSolution;    	
     }
 }

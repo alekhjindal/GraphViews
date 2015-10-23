@@ -14,6 +14,16 @@ public class CostEstimator {
 	private Hashtable<String, Double> valueStatHashTable = new Hashtable<String, Double>();
 	private Hashtable<String, Double> overallStatHashTable = new Hashtable<String, Double>();
 	
+	public CostEstimator(
+						Hashtable<String, Double> attributeStatHashTable,
+						Hashtable<String, Double> valueStatHashTable,
+						Hashtable<String, Double> overallStatHashTable
+						){
+		this.attributeStatHashTable = attributeStatHashTable;
+		this.valueStatHashTable = valueStatHashTable;
+		this.overallStatHashTable = overallStatHashTable;
+	}
+	
 	public CostEstimator (String statsFile) {		
     	try {
     		//statsFile = "/data/aaaaaaaaaaaa/DGPM/stats/" + statsFile + ".stats";
@@ -148,5 +158,49 @@ public class CostEstimator {
 		else
 		*/ 
 			return edgeSizeEstimate;
+	}
+	
+	// combine and return the estimator from two views
+	public static CostEstimator combine(CostEstimator ce1, CostEstimator ce2){
+		
+		// combine overall stats: assuming that the input estimators are from disjoint graph views
+		Hashtable<String, Double> combinedO = new Hashtable<String, Double>(ce1.overallStatHashTable);
+		for(String k : ce2.overallStatHashTable.keySet()){
+			if(combinedO.containsKey(k)){
+				double combinedValue = combinedO.get(k) + ce2.overallStatHashTable.get(k);
+				combinedO.put(k, combinedValue);
+			}
+			else
+				combinedO.put(k, ce2.overallStatHashTable.get(k));
+		}
+		
+		double combinedNumTuples = combinedO.get("numberOfTuples");
+		
+		Hashtable<String, Double> combinedA = new Hashtable<String, Double>(ce1.attributeStatHashTable);
+		for(String k : ce2.attributeStatHashTable.keySet()){
+			if(combinedA.containsKey(k)){
+				double combinedValue = (ce1.attributeStatHashTable.get(k)*ce1.overallStatHashTable.get("numberOfTuples") + 
+										ce2.attributeStatHashTable.get(k)*ce2.overallStatHashTable.get("numberOfTuples")
+									 	) / combinedNumTuples;
+				combinedA.put(k, combinedValue);
+			}
+			else
+				combinedA.put(k, ce2.attributeStatHashTable.get(k));			
+		}
+		
+		Hashtable<String, Double> combinedV = new Hashtable<String, Double>(ce1.valueStatHashTable);
+		for(String k : ce2.valueStatHashTable.keySet()){
+			if(combinedV.containsKey(k)){
+				double combinedValue = (ce1.valueStatHashTable.get(k)*ce1.overallStatHashTable.get("numberOfTuples") + 
+										ce2.valueStatHashTable.get(k)*ce2.overallStatHashTable.get("numberOfTuples")
+									 	) / combinedNumTuples;
+				combinedV.put(k, combinedValue);
+			}
+			else
+				combinedV.put(k, ce2.valueStatHashTable.get(k));			
+		}
+		
+		CostEstimator ceCombined = new CostEstimator(combinedA, combinedV, combinedO);
+		return ceCombined;
 	}
 }

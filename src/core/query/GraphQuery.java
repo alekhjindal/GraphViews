@@ -186,4 +186,17 @@ public class GraphQuery {
 
 		return -1; // could not find a match
 	}
+	
+	public boolean equals(Object obj){
+		GraphQuery q = (GraphQuery)obj;
+		
+		if(q.edges.size()!=edges.size())
+			return false;
+		
+		for(int i=0; i<edges.size(); i++)
+			if(!edges.get(i).equals(q.edges.get(i)))
+				return false;
+		
+		return true;
+	}
 }

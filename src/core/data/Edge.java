@@ -63,4 +63,16 @@ public class Edge {
 		else 
 			return (head + " " + edgeLabel + " " + tail + " " + filter + "\n");
 	}
+	
+	public boolean equals(Object obj){
+		Edge e = (Edge)obj;
+		boolean filterEquality = (filter==null && e.filter==null) || 
+								 (filter!=null && filter.equals(e.filter));
+		return (
+				e.head.equals(head) &&
+				e.tail.equals(tail) &&
+				e.edgeLabel.equals(edgeLabel) &&
+				filterEquality
+			);
+	}
 }

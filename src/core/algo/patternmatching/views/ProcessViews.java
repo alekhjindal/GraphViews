@@ -24,7 +24,7 @@ public class ProcessViews extends ProcessInput{
 	// 1. we need to create a different CostEstimator for each view
 	// 2. add a view id on the query plan triple
 	
-	public static void findPlan(String q, Hashtable<String, Query> ht, int numberOfMachines, Vector<CostEstimator> viewCostEstimators, String approach, Partitioning p) {
+	public static void findPlan(String q, Hashtable<String, Query> ht, int numberOfMachines, CostEstimator baseCE, Vector<View> views, String approach, Partitioning p) {
     	ViewQuery query = getQuery(ht, q); 
     	Vector<Solution> planSolutions = new Vector<Solution>();
     	
@@ -34,10 +34,10 @@ public class ProcessViews extends ProcessInput{
     	if (query.hasEdgesCopartitioned(p)) {
     		QueryPlanNode node = new QueryPlanNode(query, q);
     		
-    		for(CostEstimator ce: viewCostEstimators){
-    			Solution solution = new Solution(p.getKey(query.firstEdge()), node, ce, 0);	// not sure why the cost is set to 0!
-    			query.addPlanSolution(solution);
-    		}
+    		Solution baseSol = new Solution(p.getKey(query.firstEdge()), node, baseCE, 0);	// not sure why the cost is set to 0!
+    		planSolutions.add(baseSol);
+    		matchViews(baseSol, views, planSolutions);
+    		query.setPlanSolutions(planSolutions);
     		
     		return;
     	} 
@@ -47,18 +47,21 @@ public class ProcessViews extends ProcessInput{
     	//System.out.println("linearDecomposition size " + vld.size() + "\n");
     	
     	for (LinearDecomposition ld : vld) {
-    		findPlan(ld.getOneHeadSubgraph(), ht, numberOfMachines, viewCostEstimators, approach, p);
-    		findPlan(ld.getTheRest(), ht, numberOfMachines, viewCostEstimators, approach, p);
+    		findPlan(ld.getOneHeadSubgraph(), ht, numberOfMachines, baseCE, views, approach, p);
+    		findPlan(ld.getTheRest(), ht, numberOfMachines, baseCE, views, approach, p);
     		Query q1 = ht.get(ld.getOneHeadSubgraph());
     		Query q2 = ht.get(ld.getTheRest());
-    		planSolutions.addAll(computeLinearViewCosts(query, (ViewQuery)q2, (ViewQuery)q1, numberOfMachines));
+    		Vector<Solution> linearSolutions = computeLinearViewCosts(query, (ViewQuery)q2, (ViewQuery)q1, numberOfMachines);
+    		planSolutions.addAll(linearSolutions);
+    		
+    		matchViews(linearSolutions, views, planSolutions);
     	}
     	
     	/********************************START OF BUSHY PLANS************************************************/
     	// TODO: fix the bushy plan once we fix the linear one ...
     	
     	if (approach.equals("DYNAMICPROGRAMMINGBUSHY")) {
-    		findBushyPlan(q, numberOfMachines, ht, viewCostEstimators, approach, planSolutions, p);
+    		findBushyPlan(q, numberOfMachines, ht, baseCE, views, approach, planSolutions, p);
     	}
     	/********************************END OF BUSHY PLANS**************************************************/
     	// 
@@ -67,8 +70,24 @@ public class ProcessViews extends ProcessInput{
     	//System.out.println(q + "\n" + planTriples.size() + "-----------\n");
     }
 	
+	private static void matchViews(Solution currentSolution, Vector<View> views, Vector<Solution> planSolutions){
+		for(Solution v: views){
+			if(v.getPlan().getQuery().getGraphQuery().equals(
+					currentSolution.getPlan().getQuery().getGraphQuery()
+				)){
+				planSolutions.add(v);
+			}
+				
+		}
+	}
 	
-	public static void findBushyPlan(String q, int numberOfMachines, Hashtable<String, Query> ht, Vector<CostEstimator> viewCostEstimators, String approach, Vector<Solution> planSolutions, Partitioning p) {
+	private static void matchViews(Vector<Solution> currentSolutions, Vector<View> views, Vector<Solution> planSolutions){
+		for(Solution currS: currentSolutions)
+			matchViews(currS, views, planSolutions);			
+	}
+	
+	
+	public static void findBushyPlan(String q, int numberOfMachines, Hashtable<String, Query> ht, CostEstimator baseCE, Vector<View> views, String approach, Vector<Solution> planSolutions, Partitioning p) {
     	GraphQuery g = new GraphQuery(q);
     	ViewQuery query = getQuery(ht, q);
     	
@@ -101,7 +120,7 @@ public class ProcessViews extends ProcessInput{
     			continue;
     		
     		for (int i = 0; i < bd.size(); i++) {
-    			findPlan(bd.getDecomposition(i), ht, numberOfMachines, viewCostEstimators, approach, p);
+    			findPlan(bd.getDecomposition(i), ht, numberOfMachines, baseCE, views, approach, p);
     		}
     		
     		// construct a multi-way parallel hash join
@@ -160,6 +179,7 @@ public class ProcessViews extends ProcessInput{
     		Solution solution = new Solution(bd.getJoinVertex().hashCode(), node, combinedEstimator, totalCost);
     		//QueryPlanTriple triple = new QueryPlanTriple(bd.getJoinVertex(), totalCost, node);
     		planSolutions.add(solution);
+    		matchViews(solution, views, planSolutions);
     		
     		/*
     		System.out.println("construct a bushy join");
@@ -220,6 +240,7 @@ public class ProcessViews extends ProcessInput{
     				//QueryPlanTriple newTriple = new QueryPlanTriple(s.getVertex(), totalCost, newNode);
     				Solution newSolution = new Solution(s.getPartitioningKey(), newNode, s.getEstimator(), totalCost);
     				planSolutions.add(newSolution);
+    				matchViews(newSolution, views, planSolutions);
     				
     				//newNode.toString(0);
     				/*

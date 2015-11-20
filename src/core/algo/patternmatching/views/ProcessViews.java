@@ -21,6 +21,8 @@ import core.query.plan.QueryPlanNodeType;
 
 public class ProcessViews extends ProcessInput{
 
+	public static Vector<Solution> candidateViews = new Vector<Solution>(); 
+	
 	// 1. we need to create a different CostEstimator for each view
 	// 2. add a view id on the query plan triple
 	
@@ -38,6 +40,8 @@ public class ProcessViews extends ProcessInput{
     		planSolutions.add(baseSol);
     		matchViews(baseSol, views, planSolutions);
     		query.setPlanSolutions(planSolutions);
+    		
+    		candidateViews.addAll(query.getPlanSolutions());
     		
     		return;
     	} 
@@ -66,6 +70,8 @@ public class ProcessViews extends ProcessInput{
     	/********************************END OF BUSHY PLANS**************************************************/
     	// 
     	query.setPlanSolutions(EliminateNonMinViewCosts(planSolutions));
+    	
+    	candidateViews.addAll(query.getPlanSolutions());
     	
     	//System.out.println(q + "\n" + planTriples.size() + "-----------\n");
     }

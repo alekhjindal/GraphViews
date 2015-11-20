@@ -3,7 +3,7 @@ package core.algo.patternmatching.views;
 import core.data.CostEstimator;
 import core.query.plan.QueryPlanNode;
 
-public class Solution {
+public class Solution implements Comparable<Solution> {
 
 	long partitioningKey;				// Abadi's paper has a partitioning by source vertex; but it could more general
 	private double cost;				// the cost of this solution
@@ -31,5 +31,15 @@ public class Solution {
 
 	public CostEstimator getEstimator() {
 		return estimator;
+	}
+
+	@Override
+	public int compareTo(Solution obj) {
+		if(cost < obj.cost)
+			return -1;
+		else if(cost > obj.cost)
+			return 1;
+		else
+			return 0;
 	}
 }
